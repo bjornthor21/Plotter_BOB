@@ -1,0 +1,106 @@
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Type checkers
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ----------------------------
+# IDEs
+# ----------------------------
+.vscode/
+.idea/
+
+# Visual Studio
+.vs/
+
+# ----------------------------
+# Operating Systems
+# ----------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----------------------------
+# Generated files
+# ----------------------------
+*.gcode
+*.nc
+*.tap
+
+# Generated DXF/SVG previews
+preview.svg
+preview.png
+preview.jpg
+
+# Temporary exports
+temp/
+tmp/
+
+# ----------------------------
+# User settings
+# ----------------------------
+settings.local.json
+config.local.json
+
+# ----------------------------
+# Logs
+# ----------------------------
+*.log
+
+# ----------------------------
+# If you later build a React frontend
+# ----------------------------
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+
+# ----------------------------
+# Tauri (future)
+# ----------------------------
+src-tauri/target/
+target/
+
+# ----------------------------
+# PyInstaller (future)
+# ----------------------------
+*.spec
+
+# ----------------------------
+# Unnecessary files
+# ----------------------------
+*.txt
