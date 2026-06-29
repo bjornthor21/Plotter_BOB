@@ -1,8 +1,11 @@
 import math
 import numpy as np
 from matplotlib.textpath import TextPath
+import ezdxf
 from ezdxf.math import Vec3
 from settings import Settings
+
+
 
 def pen_up():
     return "M5"
@@ -344,73 +347,123 @@ def attrib_to_gcode(e):
 
     return g
 
-def entity_to_gcode(e):
+def entity_to_gcode(e, settings):
     match e.dxftype():
         case "LINE":
             return line_to_gcode(e)
+
         case "CIRCLE":
             return circle_to_gcode(e)
+
         case "ELLIPSE":
-            return   ellipse_to_gcode(e)
+            return ellipse_to_gcode(e)
+
         case "ARC":
             return arc_to_gcode(e)
+
         case "LWPOLYLINE":
-            return   lwpolyline_to_gcode(e)
+            return lwpolyline_to_gcode(e)
+
         case "POLYLINE":
             return polyline_to_gcode(e)
+
         case "SPLINE":
             return spline_to_gcode(e)
+
         case "TEXT":
-            if Settings.textOn == False:
+            if not settings.draw_text:
                 return []
-            else:
-                return text_to_gcode(e)
+            return text_to_gcode(e)
+
         case "MTEXT":
-            if Settings.textOn == False:
+            if not settings.draw_mtext:
                 return []
-            else:
-                return mtext_to_gcode(e)
+            return mtext_to_gcode(e)
+
         case "DIMENSION":
-            if Settings.dimensionsOn == False:
+            if not settings.draw_dimensions:
                 return []
+
             g = []
             for ve in e.virtual_entities():
                 if ve.dxftype() == "MTEXT":
                     g += dimension_mtext_to_gcode(ve)
                 else:
-                    g += entity_to_gcode(ve)
+                    g += entity_to_gcode(ve, settings)
             return g
+
         case "SOLID":
             return solid_to_gcode(e)
+
         case "INSERT":
-            if e.dxf.name == "Borders Default Border" and Settings.borderOn == False:
+            name = e.dxf.name
+            print("INSERT:", repr(name))
+
+            if "Border" in name and not settings.draw_border:
+                print("SKIPPING BORDER")
                 return []
-            elif e.dxf.name[0:12] == "Title Blocks ANSI" and Settings.titleBlocksOn == False:
+
+            if "Title Blocks" in name and not settings.draw_title_block:
+                print("SKIPPING TITLE BLOCK")
                 return []
-            
+
             g = []
+
             try:
                 for ve in e.virtual_entities():
-                    g += entity_to_gcode(ve)
+                    g += entity_to_gcode(ve, settings)
 
                 for attrib in e.attribs:
                     g += attrib_to_gcode(attrib)
 
             except Exception as err:
-                print(f"Could not render INSERT: {err}")
+                print(f"Could not render INSERT '{name}': {err}")
 
             return g
-        case "POINT":
-            return []
+
         case "ATTRIB":
-            if Settings.textOn == False:
+            if not settings.draw_text:
                 return []
             return attrib_to_gcode(e)
 
         case "ATTDEF":
-            if Settings.textOn == False:
+            if not settings.draw_text:
                 return []
             return text_to_gcode(e)
+
+        case "POINT":
+            return []
+
         case _:
             print(f"Unknown entity type: {e.dxftype()}")
             return []
+        
+def convert_dxf(input_file, output_file, settings):
+    print(
+        settings.draw_text,
+        settings.draw_mtext,
+        settings.draw_dimensions,
+        settings.draw_border,
+        settings.draw_title_block,
+    )
+
+    doc = ezdxf.readfile(input_file)
+    msp = doc.modelspace()
+
+    gcode = [
+        "G21",  # mm
+        "G90",  # absolute positioning
+        pen_up(),
+    ]
+
+    for e in msp:
+        gcode += entity_to_gcode(e, settings)
+
+    gcode.append(pen_up())
+    gcode.append("M2")
+
+    print("Writing to:", output_file)
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(gcode))
+
+    return gcode
