@@ -4,6 +4,7 @@ from matplotlib.textpath import TextPath
 import ezdxf
 from ezdxf.math import Vec3
 from settings import Settings
+from optimizer import optimize_gcode
 
 
 
@@ -439,14 +440,6 @@ def entity_to_gcode(e, settings):
             return []
         
 def convert_dxf(input_file, output_file, settings):
-    print(
-        settings.draw_text,
-        settings.draw_mtext,
-        settings.draw_dimensions,
-        settings.draw_border,
-        settings.draw_title_block,
-    )
-
     doc = ezdxf.readfile(input_file)
     msp = doc.modelspace()
 
@@ -462,8 +455,9 @@ def convert_dxf(input_file, output_file, settings):
     gcode.append(pen_up())
     gcode.append("M2")
 
+    optimized_gcode = optimize_gcode(gcode)
     print("Writing to:", output_file)
     with open(output_file, "w", encoding="utf-8") as f:
-        f.write("\n".join(gcode))
+        f.write("\n".join(optimized_gcode))
 
-    return gcode
+    return optimized_gcode
