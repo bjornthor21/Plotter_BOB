@@ -19,6 +19,9 @@ class PlotterApp(QMainWindow):
 
         self.file_label = QLabel("No DXF selected")
 
+        self.optimize_cb = QCheckBox("Optimize Paths")
+        self.optimize_cb.setChecked(True)
+
         self.text_cb = QCheckBox("Text")
         self.text_cb.setChecked(True)
 
@@ -45,6 +48,7 @@ class PlotterApp(QMainWindow):
         controls.addWidget(gen_btn)
 
         checks = QHBoxLayout()
+        checks.addWidget(self.optimize_cb)
         checks.addWidget(self.text_cb)
         checks.addWidget(self.dim_cb)
         checks.addWidget(self.border_cb)
@@ -80,11 +84,12 @@ class PlotterApp(QMainWindow):
             return
 
         settings = Settings(
+            optimize_paths=self.optimize_cb.isChecked(),
             draw_text=self.text_cb.isChecked(),
             draw_mtext=self.text_cb.isChecked(),
             draw_dimensions=self.dim_cb.isChecked(),
             draw_border=self.border_cb.isChecked(),
-            draw_title_block=self.title_cb.isChecked(),
+            draw_title_block=self.title_cb.isChecked()
         )
 
         input_path = Path(self.selected_file)

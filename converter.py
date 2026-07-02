@@ -3,16 +3,9 @@ import numpy as np
 from matplotlib.textpath import TextPath
 import ezdxf
 from ezdxf.math import Vec3
-from settings import Settings
-from optimizer import optimize_gcode
-
-
-
-def pen_up():
-    return "M5"
-
-def pen_down():
-    return "M3 S1000"
+from paths import PlotPath
+from gcode import *
+from optimizer import optimize_paths
 
 def transform_point(x, y, insert, rotation_deg):
     a = math.radians(rotation_deg)
@@ -22,68 +15,55 @@ def transform_point(x, y, insert, rotation_deg):
 
     return Vec3(insert.x + xr, insert.y + yr, 0)
 
-def points_to_gcode(points):
-    if not points:
+def make_path(points, source_type="", layer=""):
+    if not points or len(points) < 2:
         return []
+    return [PlotPath(points, source_type, layer)]
 
-    g = [
-        f"G0 X{points[0].x:.3f} Y{points[0].y:.3f}",
-        pen_down(),
-    ]
-
-    for p in points[1:]:
-        g.append(f"G1 X{p.x:.3f} Y{p.y:.3f} F{Settings.feed}")
-
-    g.append(pen_up())
-    return g
-
-
-def line_to_gcode(e):
-    start = e.dxf.start
-    fin = e.dxf.end
+def line_to_paths(e):
     return [
-        f"G0 X{start.x:.3f} Y{start.y:.3f}",
-        pen_down(),
-        f"G1 X{fin.x:.3f} Y{fin.y:.3f} F{Settings.feed}",
-        pen_up(),
+        PlotPath(
+            points=[
+                e.dxf.start,
+                e.dxf.end,
+            ],
+            source_type="LINE",
+            layer=e.dxf.layer,
+        )
     ]
 
-def circle_to_gcode(e, segments=80):
+def circle_to_paths(e, segments=80):
     center = e.dxf.center
     radius = e.dxf.radius
-    g = [f"G0 X{center.x + radius:.3f} Y{center.y:.3f}", pen_down()]
 
-    for i in range(1, segments + 1):
+    points = []
+
+    for i in range(segments + 1):
         ang = 2 * math.pi * i / segments
         x = center.x + radius * math.cos(ang)
         y = center.y + radius * math.sin(ang)
-        g.append(f"G1 X{x:.3f} Y{y:.3f} F{Settings.feed}")
+        points.append(Vec3(x, y, 0))
 
-    g.append(pen_up())
-    return g
+    return make_path(points, e)
 
-def ellipse_to_gcode(e, segments=80):
+def ellipse_to_paths(e, segments=80):
     params = np.linspace(
         e.dxf.start_param,
         e.dxf.end_param,
-        segments + 1
+        segments + 1,
     )
 
     points = list(e.vertices(params))
 
-    g = [
-        f"G0 X{points[0].x:.3f} Y{points[0].y:.3f}",
-        pen_down()
+    return [
+        PlotPath(
+            points=points,
+            source_type="ELLIPSE",
+            layer=e.dxf.layer,
+        )
     ]
 
-    for p in points[1:]:
-        g.append(f"G1 X{p.x:.3f} Y{p.y:.3f} F{Settings.feed}")
-
-    g.append(pen_up())
-
-    return g
-
-def arc_to_gcode(e, segments=40):
+def arc_to_paths(e, segments=40):
     center = e.dxf.center
     r = e.dxf.radius
 
@@ -101,9 +81,9 @@ def arc_to_gcode(e, segments=40):
         y = center.y + r * math.sin(a)
         points.append(type(center)(x, y, 0))
 
-    return points_to_gcode(points)
+    return make_path(points, e)
 
-def lwpolyline_to_gcode(e):
+def lwpolyline_to_paths(e):
     points = []
 
     for p in e.get_points():
@@ -114,9 +94,9 @@ def lwpolyline_to_gcode(e):
     if e.closed:
         points.append(points[0])
 
-    return points_to_gcode(points)
+    return make_path(points, e)
 
-def polyline_to_gcode(e):
+def polyline_to_paths(e):
     points = []
 
     for vertex in e.vertices:
@@ -125,13 +105,13 @@ def polyline_to_gcode(e):
     if e.is_closed:
         points.append(points[0])
 
-    return points_to_gcode(points)
+    return make_path(points, e)
 
-def spline_to_gcode(e, segments=100):
+def spline_to_paths(e, segments=100):
     points = list(e.flattening(distance=0.1, segments=segments))
-    return points_to_gcode(points)
+    return make_path(points, e)
 
-def text_to_gcode(e):
+def text_to_paths(e):
     text = clean_dxf_text(e.dxf.text)
     insert = e.dxf.insert
     height = e.dxf.height
@@ -153,7 +133,7 @@ def text_to_gcode(e):
         ]
 
         if len(points) > 1:
-            g += points_to_gcode(points)
+            g += make_path(points, e)
 
     return g
 
@@ -202,7 +182,7 @@ def apply_mtext_alignment(polys, attachment_point):
 
     return [[(x + shift_x, y + shift_y) for x, y in poly] for poly in polys]
 
-def mtext_to_gcode(e):
+def mtext_to_paths(e):
     text = clean_dxf_text(e.plain_text())
     #text = e.plain_text()
     insert = e.dxf.insert
@@ -259,11 +239,11 @@ def mtext_to_gcode(e):
     for poly in all_polys:
         points = [transform_point(x, y, insert, rotation) for x, y in poly]
         if len(points) > 1:
-            g += points_to_gcode(points)
+            g += make_path(points, e)
 
     return g
 
-def solid_to_gcode(e):
+def solid_to_paths(e):
     points = []
     
     for name in ["vtx0", "vtx1", "vtx2", "vtx3"]:
@@ -272,7 +252,7 @@ def solid_to_gcode(e):
 
     if len(points) >= 3:
         points.append(points[0])
-        return points_to_gcode(points)
+        return make_path(points, e)
 
     return []
 
@@ -295,7 +275,7 @@ def align_dimension_text(polys):
         for poly in polys
     ]
 
-def dimension_mtext_to_gcode(e):
+def dimension_mtext_to_paths(e):
     raw = e.text
     text = e.plain_text()
 
@@ -324,11 +304,11 @@ def dimension_mtext_to_gcode(e):
     for poly in polys:
         points = [transform_point(x, y, insert, rotation) for x, y in poly]
         if len(points) > 1:
-            g += points_to_gcode(points)
+            g += make_path(points, e)
 
     return g
 
-def attrib_to_gcode(e):
+def attrib_to_paths(e):
     text = clean_dxf_text(e.dxf.text)
 
     if not text.strip():
@@ -344,93 +324,90 @@ def attrib_to_gcode(e):
     for poly in tp.to_polygons():
         points = [transform_point(x, y, insert, rotation) for x, y in poly]
         if len(points) > 1:
-            g += points_to_gcode(points)
+            g += make_path(points, e)
 
     return g
 
-def entity_to_gcode(e, settings):
+def entity_to_paths(e, settings):
     match e.dxftype():
         case "LINE":
-            return line_to_gcode(e)
+            return line_to_paths(e)
 
         case "CIRCLE":
-            return circle_to_gcode(e)
+            return circle_to_paths(e)
 
         case "ELLIPSE":
-            return ellipse_to_gcode(e)
+            return ellipse_to_paths(e)
 
         case "ARC":
-            return arc_to_gcode(e)
+            return arc_to_paths(e)
 
         case "LWPOLYLINE":
-            return lwpolyline_to_gcode(e)
+            return lwpolyline_to_paths(e)
 
         case "POLYLINE":
-            return polyline_to_gcode(e)
+            return polyline_to_paths(e)
 
         case "SPLINE":
-            return spline_to_gcode(e)
+            return spline_to_paths(e)
 
         case "TEXT":
             if not settings.draw_text:
                 return []
-            return text_to_gcode(e)
+            return text_to_paths(e)
 
         case "MTEXT":
             if not settings.draw_mtext:
                 return []
-            return mtext_to_gcode(e)
+            return mtext_to_paths(e)
 
         case "DIMENSION":
             if not settings.draw_dimensions:
                 return []
 
-            g = []
+            paths = []
             for ve in e.virtual_entities():
                 if ve.dxftype() == "MTEXT":
-                    g += dimension_mtext_to_gcode(ve)
+                    paths += dimension_mtext_to_paths(ve)
                 else:
-                    g += entity_to_gcode(ve, settings)
-            return g
+                    paths += entity_to_paths(ve, settings)
+            return paths
 
         case "SOLID":
-            return solid_to_gcode(e)
+            return solid_to_paths(e)
 
         case "INSERT":
             name = e.dxf.name
-            print("INSERT:", repr(name))
 
             if "Border" in name and not settings.draw_border:
-                print("SKIPPING BORDER")
                 return []
 
             if "Title Blocks" in name and not settings.draw_title_block:
-                print("SKIPPING TITLE BLOCK")
                 return []
 
-            g = []
+            paths = []
 
             try:
                 for ve in e.virtual_entities():
-                    g += entity_to_gcode(ve, settings)
+                    paths += entity_to_paths(ve, settings)
 
                 for attrib in e.attribs:
-                    g += attrib_to_gcode(attrib)
+                    paths += attrib_to_paths(attrib)
 
             except Exception as err:
                 print(f"Could not render INSERT '{name}': {err}")
 
-            return g
+            return paths
 
         case "ATTRIB":
             if not settings.draw_text:
                 return []
-            return attrib_to_gcode(e)
+            return attrib_to_paths(e)
 
         case "ATTDEF":
             if not settings.draw_text:
                 return []
-            return text_to_gcode(e)
+            return text_to_paths(e)
 
         case "POINT":
             return []
@@ -443,21 +420,17 @@ def convert_dxf(input_file, output_file, settings):
     doc = ezdxf.readfile(input_file)
     msp = doc.modelspace()
 
-    gcode = [
-        "G21",  # mm
-        "G90",  # absolute positioning
-        pen_up(),
-    ]
+    paths = []
 
     for e in msp:
-        gcode += entity_to_gcode(e, settings)
+        paths += entity_to_paths(e, settings)
 
-    gcode.append(pen_up())
-    gcode.append("M2")
+    if settings.optimize_paths:
+        paths = optimize_paths(paths)
 
-    optimized_gcode = optimize_gcode(gcode)
-    print("Writing to:", output_file)
+    gcode = paths_to_gcode(paths, settings)
+
     with open(output_file, "w", encoding="utf-8") as f:
-        f.write("\n".join(optimized_gcode))
+        f.write("\n".join(gcode))
 
-    return optimized_gcode
+    return gcode, paths
