@@ -5,12 +5,15 @@ from PySide6.QtWidgets import (
 )
 from settings import Settings
 from converter import convert_dxf
+from viewer import PathViewer
 from pathlib import Path
 
 
 class PlotterApp(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        self.current_paths = []
 
         self.setWindowTitle("Plotter BOB")
         self.resize(500, 600)
@@ -37,11 +40,19 @@ class PlotterApp(QMainWindow):
         self.log = QTextEdit()
         self.log.setReadOnly(True)
 
+        self.viewer = PathViewer()
+
+        self.preview_btn = QPushButton("Preview")
+        self.preview_btn.clicked.connect(self.preview_paths)
+
         open_btn = QPushButton("Open DXF")
         open_btn.clicked.connect(self.open_file)
 
         gen_btn = QPushButton("Generate G-code")
         gen_btn.clicked.connect(self.generate_gcode)
+
+        save_btn = QPushButton("Generate G-code")
+        save_btn.clicked.connect(self.generate_gcode)
 
         controls = QHBoxLayout()
         controls.addWidget(open_btn)
@@ -60,6 +71,8 @@ class PlotterApp(QMainWindow):
         layout.addLayout(checks)
         layout.addWidget(QLabel("Log"))
         layout.addWidget(self.log)
+        layout.addWidget(self.preview_btn)
+        layout.addWidget(self.viewer)
 
         container = QWidget()
         container.setLayout(layout)
@@ -79,6 +92,7 @@ class PlotterApp(QMainWindow):
             self.log.append(f"Loaded: {file_path}")
 
     def generate_gcode(self):
+
         if not self.selected_file:
             self.log.append("No DXF selected.")
             return
@@ -99,10 +113,22 @@ class PlotterApp(QMainWindow):
 
         output_file = output_dir / f"{input_path.stem}.gcode"
 
-        convert_dxf(str(input_path), str(output_file), settings)
+        try:
+            gcode, paths = convert_dxf(str(input_path), str(output_file), settings)
+            self.current_paths = paths
+            self.viewer.draw_paths(paths)
 
-        self.log.append(f"Generated: {output_file.resolve()}")
+            self.log.append(f"Generated: {output_file.resolve()}")
+        except Exception as err:
+            self.log.append(f"Error: {err}")
+            raise
 
+    def preview_paths(self):
+        if not self.current_paths:
+            self.log.append("No paths to preview. Generate G-code first.")
+            return
+
+        self.viewer.draw_paths(self.current_paths)
 
 def run_app():
     app = QApplication([])
