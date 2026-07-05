@@ -416,7 +416,7 @@ def entity_to_paths(e, settings):
             print(f"Unknown entity type: {e.dxftype()}")
             return []
         
-def convert_dxf(input_file, output_file, settings):
+def convert_dxf(input_file, settings):
     doc = ezdxf.readfile(input_file)
     msp = doc.modelspace()
 
@@ -429,8 +429,5 @@ def convert_dxf(input_file, output_file, settings):
         paths = optimize_paths(paths)
 
     gcode = paths_to_gcode(paths, settings)
-
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write("\n".join(gcode))
 
     return gcode, paths

@@ -7,6 +7,7 @@ from settings import Settings
 from converter import convert_dxf
 from viewer import PathViewer
 from pathlib import Path
+from PySide6.QtGui import QIcon
 
 
 class PlotterApp(QMainWindow):
@@ -16,6 +17,7 @@ class PlotterApp(QMainWindow):
         self.current_paths = []
 
         self.setWindowTitle("Plotter BOB")
+        self.setWindowIcon(QIcon("icon.ico"))
         self.resize(500, 600)
 
         self.selected_file = None
@@ -51,12 +53,13 @@ class PlotterApp(QMainWindow):
         gen_btn = QPushButton("Generate G-code")
         gen_btn.clicked.connect(self.generate_gcode)
 
-        save_btn = QPushButton("Generate G-code")
-        save_btn.clicked.connect(self.generate_gcode)
+        save_btn = QPushButton("Save As")
+        save_btn.clicked.connect(self.save_as)
 
         controls = QHBoxLayout()
         controls.addWidget(open_btn)
         controls.addWidget(gen_btn)
+        controls.addWidget(save_btn)
 
         checks = QHBoxLayout()
         checks.addWidget(self.optimize_cb)
@@ -92,7 +95,6 @@ class PlotterApp(QMainWindow):
             self.log.append(f"Loaded: {file_path}")
 
     def generate_gcode(self):
-
         if not self.selected_file:
             self.log.append("No DXF selected.")
             return
@@ -108,20 +110,37 @@ class PlotterApp(QMainWindow):
 
         input_path = Path(self.selected_file)
 
-        output_dir = Path("generatedGcode")
-        output_dir.mkdir(exist_ok=True)
-
-        output_file = output_dir / f"{input_path.stem}.gcode"
-
         try:
-            gcode, paths = convert_dxf(str(input_path), str(output_file), settings)
+            gcode, paths = convert_dxf(str(input_path), settings)
+
+            self.current_gcode = gcode
             self.current_paths = paths
             self.viewer.draw_paths(paths)
 
-            self.log.append(f"Generated: {output_file.resolve()}")
+            self.log.append(f"Generated Gcode from: {str(input_path)}")
         except Exception as err:
             self.log.append(f"Error: {err}")
             raise
+
+    def save_as(self):
+        if not self.current_gcode:
+            self.log.append("No G-code to save. Generate G-code first.")
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save G-code As",
+            "",
+            "G-code Files (*.gcode);;NC Files (*.nc);;Text Files (*.txt)"
+        )
+
+        if not file_path:
+            return
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(self.current_gcode))
+
+        self.log.append(f"Saved as: {file_path}")
 
     def preview_paths(self):
         if not self.current_paths:
