@@ -85,13 +85,13 @@ M2
 ```
  
 Where:
-**G21** — Use millimeters
-**G90** — Use absolute coordinates
-**G0** — Pen-up travel move
-**G1** — Drawing move
-**M3** — Pen down
-**M5** — Pen up
-**M2** — End program
+* **G21** — Use millimeters
+* **G90** — Use absolute coordinates
+* **G0** — Pen-up travel move
+* **G1** — Drawing move
+* **M3** — Pen down
+* **M5** — Pen up
+* **M2** — End program
 
 ## Main Dependancies
 * Python
