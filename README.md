@@ -66,7 +66,7 @@ G-code Generation
 .gcode File
 ```
 
-##Generated G-code
+## Generated G-code
 The generated G-code currently uses a simple plotter command set:
 
 ```code
