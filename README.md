@@ -64,3 +64,42 @@ G-code Generation
     │
     ▼
 .gcode File
+```
+
+##Generated G-code
+The generated G-code currently uses a simple plotter command set:
+
+```code
+G21
+G90
+M5
+
+G0 X10.000 Y20.000
+M3 S1000
+
+G1 X20.000 Y20.000 F1000
+G1 X20.000 Y30.000 F1000
+
+M5
+M2
+```
+ 
+Where:
+**G21** — Use millimeters
+**G90** — Use absolute coordinates
+**G0** — Pen-up travel move
+**G1** — Drawing move
+**M3** — Pen down
+**M5** — Pen up
+**M2** — End program
+
+## Main Dependancies
+* Python
+* PySide6
+* PyQtGraph
+* ezdxf
+* NumPy
+* Matplotlib
+
+## Download instructions
+here you can download the executable
