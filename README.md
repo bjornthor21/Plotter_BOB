@@ -102,4 +102,4 @@ Where:
 * Matplotlib
 
 ## Download instructions
- here[https://github.com/bjornthor21/Plotter_BOB/tree/main/dist] you can download the executable
+ [here](https://github.com/bjornthor21/Plotter_BOB/tree/main/dist) you can download the executable
