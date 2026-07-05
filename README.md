@@ -2,7 +2,7 @@
 
 Plotter BOB is a desktop application for converting DXF technical drawings into G-code suitable for pen plotters and similar CNC-style drawing machines.
 
-The application acts as a lightweight **slicer for technical drawings**. It reads geometry from a DXF file, converts drawing entities into internal toolpaths, optionally optimizes the drawing order to reduce unnecessary travel, previews the resulting paths, and exports the final result as G-code.
+The application acts as a lightweight **slicer for technical drawings**. Designed for inventor technial drawings exported as .dxf. It reads geometry from a DXF file, converts drawing entities into internal toolpaths, optionally optimizes the drawing order to reduce unnecessary travel, previews the resulting paths, and exports the final result as G-code.
 
 ## Features
 
